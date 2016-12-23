@@ -3,7 +3,8 @@
 
 var fs = require('fs');
 var path = require('path');
-var count = 0;
+var MergeTrees = require('broccoli-merge-trees');
+var FileCreator = require('broccoli-file-creator');
 
 function findRoot(current) {
   var app;
@@ -20,21 +21,17 @@ function findRoot(current) {
 module.exports = {
   name: 'ember-get-config',
 
-  treeForAddon: function() {
+  treeForAddon: function(inputTree) {
     var modulePrefix = findRoot(this).project.config(process.env.EMBER_ENV)['modulePrefix'];
-
-    fs.writeFileSync(
-      path.join(__dirname, 'addon/index.js'),
-      'export { default } from \'' + modulePrefix + '/config/environment\';',
-      'utf-8'
-    );
-
-    return this._super.treeForAddon.apply(this, arguments);
+    var fileTree = new FileCreator('index.js', 'export { default } from \'' + modulePrefix + '/config/environment\';');
+    return this._super.treeForAddon.call(this, new MergeTrees([inputTree, fileTree], { overwrite: true }));
   },
 
+  _includeCount: 0,
+
   included: function() {
-    count++;
-    if (count > 1) {
+    this._includeCount++;
+    if (this._includeCount > 1) {
       findRoot(this).project.ui.writeDeprecateLine('`ember-get-config` previously recommended reinvoking the `included` hook, but that is no longer recommended. Please remove the additional invocation.');
     }
   }
